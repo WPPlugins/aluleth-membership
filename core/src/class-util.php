@@ -84,4 +84,31 @@ final class Util {
 	public static function slug( $text ) {
 		return substr( sanitize_title( (string) $text ), 0, 100 );
 	}
+
+	/**
+	 * The first $length characters of a text (UTF-8 aware, without the mbstring extension).
+	 *
+	 * @param string $text   Text.
+	 * @param int    $length Characters to keep.
+	 * @return string
+	 */
+	public static function cut( $text, $length ) {
+		$text = (string) $text;
+		if ( preg_match( '/^.{0,' . max( 0, (int) $length ) . '}/su', $text, $m ) ) {
+			return $m[0];
+		}
+		return substr( $text, 0, (int) $length ); // Not valid UTF-8: cut by bytes.
+	}
+
+	/**
+	 * Number of characters in a text (UTF-8 aware, without the mbstring extension).
+	 *
+	 * @param string $text Text.
+	 * @return int
+	 */
+	public static function length( $text ) {
+		$text  = (string) $text;
+		$count = preg_match_all( '/./su', $text );
+		return false === $count ? strlen( $text ) : (int) $count;
+	}
 }

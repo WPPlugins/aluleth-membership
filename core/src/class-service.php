@@ -415,7 +415,7 @@ abstract class Service {
 			if ( '' !== $value ) {
 				$lines[] = array(
 					'label' => (string) $field['label'],
-					'value' => mb_substr( $value, 0, 900 ),
+					'value' => Util::cut( $value, 900 ),
 				);
 			}
 		}

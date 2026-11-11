@@ -136,7 +136,7 @@ final class Service_Slack extends Service {
 				'type' => 'header',
 				'text' => array(
 					'type' => 'plain_text',
-					'text' => mb_substr( ( $a['test'] ? '[' . __( 'Test', 'aluleth-membership' ) . '] ' : '' ) . $a['title'], 0, 150 ),
+					'text' => Util::cut( ( $a['test'] ? '[' . __( 'Test', 'aluleth-membership' ) . '] ' : '' ) . $a['title'], 150 ),
 				),
 			),
 		);
@@ -147,7 +147,7 @@ final class Service_Slack extends Service {
 					static function ( $text ) {
 						return array(
 							'type' => 'mrkdwn',
-							'text' => mb_substr( $text, 0, 2000 ),
+							'text' => Util::cut( $text, 2000 ),
 						);
 					},
 					$chunk

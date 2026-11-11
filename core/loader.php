@@ -53,4 +53,4 @@ if ( ! function_exists( 'aluleth_core_register' ) ) {
 	add_action( 'plugins_loaded', 'aluleth_core_elect', -90 );
 }
 
-aluleth_core_register( '0.18.4', __DIR__ );
+aluleth_core_register( '0.18.4.1', __DIR__ );

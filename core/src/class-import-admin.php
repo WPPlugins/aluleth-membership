@@ -201,7 +201,7 @@ final class Import_Admin {
 		header( 'Content-Type: text/csv; charset=utf-8' );
 		header( 'Content-Disposition: attachment; filename="not-imported-' . gmdate( 'Y-m-d' ) . '.csv"' );
 		echo "\xEF\xBB\xBF"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- UTF-8 marker so Excel reads accents.
-		readfile( $path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_readfile -- CSV built by Import::skip() with formula-safe cells.
+		Import::output( $job['skipped'] ); // CSV built by Import::skip() with formula-safe cells.
 		exit;
 	}
 

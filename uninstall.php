@@ -68,6 +68,7 @@ function aluleth_membership_uninstall_site() {
 		delete_metadata( 'user', 0, '_aluleth_member_created', '', true );
 		delete_option( 'aluleth_membership_db_version' );
 		delete_option( 'aluleth_membership_settings' );
+		delete_option( 'aluleth_membership_files_format' );
 		delete_option( 'aluleth_membership_emails' );
 		delete_option( 'aluleth_membership_delete_data' );
 		delete_option( 'aluleth_membership_import' );

@@ -89,6 +89,7 @@ if ( ! function_exists( 'aluleth_core_other_plugins' ) ) {
 			$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s", $pattern ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		}
 		delete_option( 'aluleth_core_db_version' );
+		delete_option( 'aluleth_core_import_files' );
 		delete_option( 'aluleth_core_delete_data' );
 		delete_option( 'aluleth_security' );
 		delete_option( 'aluleth_access' );

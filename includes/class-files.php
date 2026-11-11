@@ -3,9 +3,11 @@
  * Files for members: uploaded to a folder of their own with a random name,
  * downloaded only through the site after the access check.
  *
- * The folder has an .htaccess that refuses direct access (Apache,
- * LiteSpeed); on other servers the random part of each file name keeps it
- * from being guessed.
+ * Each file is saved under a random name ending in .php and starts with a
+ * line that stops PHP at once: a direct request for it returns nothing on any
+ * web server (Apache, LiteSpeed, Nginx, IIS), with or without the folder's
+ * .htaccess and web.config rules. Only the download link sends the file,
+ * without that line, after the access check.
  *
  * @package Aluleth\Membership
  */
@@ -37,6 +39,11 @@ final class Files {
 	const DIR = 'aluleth-membership-files';
 
 	/**
+	 * First line of every stored file (PHP stops there and does not even read what follows).
+	 */
+	const GUARD = "<?php exit; __halt_compiler(); ?>\n";
+
+	/**
 	 * Hooks.
 	 *
 	 * @return void
@@ -45,6 +52,9 @@ final class Files {
 		add_action( 'init', array( __CLASS__, 'register_post_type' ) );
 		add_action( 'template_redirect', array( __CLASS__, 'download' ), 2 );
 		add_shortcode( 'aluleth_file', array( __CLASS__, 'shortcode' ) );
+		if ( '2' !== get_option( 'aluleth_membership_files_format' ) ) {
+			add_action( 'admin_init', array( __CLASS__, 'guard_old_files' ) );
+		}
 	}
 
 	/**
@@ -89,7 +99,115 @@ final class Files {
 		if ( ! file_exists( $dir . '/index.php' ) ) {
 			file_put_contents( $dir . '/index.php', "<?php\n// Silence is golden.\n" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
 		}
+		if ( ! file_exists( $dir . '/web.config' ) ) {
+			file_put_contents( $dir . '/web.config', "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<configuration><system.webServer><authorization><deny users=\"*\" /></authorization></system.webServer></configuration>\n" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
+		}
 		return $dir;
+	}
+
+	/**
+	 * Where the content of a stored file starts: after the GUARD line (.php),
+	 * at 0 for a file saved by 0.4.2 or earlier.
+	 *
+	 * @param string $file Stored name.
+	 * @return int
+	 */
+	private static function start_of( $file ) {
+		return '.php' === substr( (string) $file, -4 ) ? strlen( self::GUARD ) : 0;
+	}
+
+	/**
+	 * Copies $source behind the GUARD line into a new random .php file.
+	 *
+	 * @param string $source File to copy.
+	 * @return string|false New stored name.
+	 */
+	private static function write_guarded( $source ) {
+		$name   = strtolower( wp_generate_password( 24, false, false ) ) . '.php';
+		$target = self::dir() . '/' . $name;
+		// phpcs:disable WordPress.WP.AlternativeFunctions.file_system_operations_fopen, WordPress.WP.AlternativeFunctions.file_system_operations_fwrite, WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+		$in  = @fopen( $source, 'rb' ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		$out = $in ? @fopen( $target, 'wb' ) : false; // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		$ok  = $in && $out && false !== fwrite( $out, self::GUARD ) && false !== stream_copy_to_stream( $in, $out );
+		if ( $in ) {
+			fclose( $in );
+		}
+		if ( $out ) {
+			fclose( $out );
+		}
+		// phpcs:enable
+		clearstatcache( true, $target );
+		if ( ! $ok || (int) filesize( $target ) !== (int) filesize( $source ) + strlen( self::GUARD ) ) {
+			if ( file_exists( $target ) ) {
+				wp_delete_file( $target );
+			}
+			return false;
+		}
+		return $name;
+	}
+
+	/**
+	 * Moves a file saved by 0.4.2 or earlier (its own name) behind the GUARD line.
+	 *
+	 * @param int $id File id.
+	 * @return bool Whether it is guarded now.
+	 */
+	private static function guard_file( $id ) {
+		$meta = get_post_meta( $id, self::META, true );
+		if ( ! is_array( $meta ) || empty( $meta['file'] ) ) {
+			return true;
+		}
+		if ( '.php' === substr( (string) $meta['file'], -4 ) ) {
+			return true;
+		}
+		$old = self::dir() . '/' . basename( $meta['file'] );
+		if ( ! file_exists( $old ) ) {
+			return true;
+		}
+		$new = self::write_guarded( $old );
+		if ( ! $new ) {
+			return false;
+		}
+		$meta['file'] = $new;
+		update_post_meta( $id, self::META, $meta );
+		wp_delete_file( $old );
+		return true;
+	}
+
+	/**
+	 * Once after the update (admin): moves every file saved by 0.4.2 or earlier
+	 * behind the GUARD line.
+	 *
+	 * @return void
+	 */
+	public static function guard_old_files() {
+		if ( ! current_user_can( 'upload_files' ) ) {
+			return;
+		}
+		$ok = true;
+		for ( $page = 1; $page < 100; $page++ ) {
+			$ids = get_posts(
+				array(
+					'post_type'      => self::POST_TYPE,
+					'post_status'    => 'any',
+					'posts_per_page' => 50,
+					'paged'          => $page,
+					'orderby'        => 'ID',
+					'order'          => 'ASC',
+					'no_found_rows'  => true,
+					'fields'         => 'ids',
+				)
+			);
+			if ( ! $ids ) {
+				break;
+			}
+			foreach ( $ids as $id ) {
+				$ok = self::guard_file( (int) $id ) && $ok;
+			}
+		}
+		if ( $ok ) {
+			update_option( 'aluleth_membership_files_format', '2', true );
+		}
 	}
 
 	/**
@@ -178,7 +296,16 @@ final class Files {
 		if ( isset( $result['error'] ) ) {
 			return new \WP_Error( 'alm_upload', $result['error'] );
 		}
-		$original = sanitize_file_name( isset( $upload['name'] ) ? (string) $upload['name'] : basename( $result['file'] ) );
+		// Stored behind the GUARD line, under a random .php name.
+		$size   = (int) filesize( $result['file'] );
+		$stored = self::write_guarded( $result['file'] );
+		wp_delete_file( $result['file'] );
+		if ( ! $stored ) {
+			return new \WP_Error( 'alm_upload', __( 'The file could not be saved. Please try again.', 'aluleth-membership' ) );
+		}
+		$result['file'] = self::dir() . '/' . $stored;
+
+		$original = sanitize_file_name( isset( $upload['name'] ) ? (string) $upload['name'] : 'file' );
 		$title    = '' !== trim( (string) $name ) ? sanitize_text_field( $name ) : $original;
 		$id       = wp_insert_post(
 			array(
@@ -200,7 +327,7 @@ final class Files {
 				'file'      => basename( $result['file'] ),
 				'filename'  => $original,
 				'type'      => $result['type'],
-				'size'      => (int) filesize( $result['file'] ),
+				'size'      => $size,
 				'levels'    => $levels ? $levels : 'any',
 				'downloads' => 0,
 			)
@@ -305,10 +432,14 @@ final class Files {
 				array( 'response' => 403 )
 			);
 		}
+		if ( self::guard_file( $id ) ) {
+			$file = self::get( $id ); // Moved behind the GUARD line if it was saved by 0.4.2 or earlier.
+		}
 		$path = self::dir() . '/' . basename( $file['file'] );
 		if ( ! is_readable( $path ) ) {
 			wp_die( esc_html__( 'This file no longer exists.', 'aluleth-membership' ), '', array( 'response' => 404 ) );
 		}
+		$start             = self::start_of( $file['file'] );
 		$meta              = get_post_meta( $id, self::META, true );
 		$meta['downloads'] = isset( $meta['downloads'] ) ? (int) $meta['downloads'] + 1 : 1;
 		update_post_meta( $id, self::META, $meta );
@@ -317,12 +448,19 @@ final class Files {
 		header( 'X-Robots-Tag: noindex' );
 		header( 'Content-Type: ' . $file['type'] );
 		header( 'Content-Disposition: attachment; filename="' . str_replace( array( '"', "\r", "\n" ), '', $file['filename'] ) . '"' );
-		header( 'Content-Length: ' . (string) filesize( $path ) );
+		header( 'Content-Length: ' . (string) max( 0, (int) filesize( $path ) - $start ) );
 		header( 'X-Content-Type-Options: nosniff' );
 		while ( ob_get_level() ) {
 			ob_end_clean();
 		}
-		readfile( $path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_readfile -- streams a protected file.
+		// phpcs:disable WordPress.WP.AlternativeFunctions.file_system_operations_fopen, WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- streams a protected file, without its first line.
+		$handle = fopen( $path, 'rb' );
+		if ( $handle ) {
+			fseek( $handle, $start );
+			fpassthru( $handle );
+			fclose( $handle );
+		}
+		// phpcs:enable
 		exit;
 	}
 

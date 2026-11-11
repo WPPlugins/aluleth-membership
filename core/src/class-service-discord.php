@@ -130,13 +130,13 @@ final class Service_Discord extends Service {
 		$fields = array();
 		foreach ( $a['lines'] as $line ) {
 			$fields[] = array(
-				'name'   => mb_substr( $line['label'], 0, 256 ),
-				'value'  => mb_substr( $line['value'], 0, 1024 ),
-				'inline' => mb_strlen( $line['value'] ) < 40,
+				'name'   => Util::cut( $line['label'], 256 ),
+				'value'  => Util::cut( $line['value'], 1024 ),
+				'inline' => Util::length( $line['value'] ) < 40,
 			);
 		}
 		$embed = array(
-			'title'  => mb_substr( ( $a['test'] ? '[' . __( 'Test', 'aluleth-membership' ) . '] ' : '' ) . $a['title'], 0, 256 ),
+			'title'  => Util::cut( ( $a['test'] ? '[' . __( 'Test', 'aluleth-membership' ) . '] ' : '' ) . $a['title'], 256 ),
 			'color'  => 0xFF6A1F,
 			'fields' => $fields,
 		);
@@ -147,7 +147,7 @@ final class Service_Discord extends Service {
 			$embed['description'] = $a['payment'];
 		}
 		return array(
-			'username'         => mb_substr( wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES ), 0, 80 ),
+			'username'         => Util::cut( wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES ), 80 ),
 			'embeds'           => array( $embed ),
 			'allowed_mentions' => array( 'parse' => array() ),
 		);

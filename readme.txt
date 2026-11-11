@@ -1,14 +1,14 @@
-=== Aluleth Membership ===
+=== Aluleth Membership – Paid Memberships & Members-Only Content ===
 Contributors: aluleth
-Tags: membership, members only, paywall, restrict content, fluentcart
+Tags: membership, paid memberships, restrict content, members only, paywall
 Requires at least: 7.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.4.2
+Stable tag: 0.4.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Membership levels sold with FluentCart or WooCommerce, free sign-ups, members-only content with a teaser and a designed join card, and a member area.
+Sell membership levels with WooCommerce or FluentCart, offer free sign-ups, restrict content with a teaser and a join card, and give members an area.
 
 == Description ==
 
@@ -55,7 +55,7 @@ Let visitors read a few members-only articles each month (3 by default) before t
 
 **Files for members**
 
-Upload guides, templates or recordings in Content access and choose the levels that can download them. Members find them under "Downloads" in their member area, and you can link one in any content with `[aluleth_file id="12"]`. Files are kept out of the media library, in a folder that refuses direct access (Apache and LiteSpeed), with a random part in each file name, and they open only through your site after the access check.
+Upload guides, templates or recordings in Content access and choose the levels that can download them. Members find them under "Downloads" in their member area, and you can link one in any content with `[aluleth_file id="12"]`. Files are kept out of the media library, each under a random name that cannot be opened from its address on any server, and they open only through your site after the access check.
 
 **Join card and member area**
 
@@ -113,7 +113,7 @@ They see what visitors see: the beginning of the post and the join card.
 
 = Are member files safe on Nginx? =
 
-Nginx does not read the folder's .htaccess. Each file name has a random part of 24 characters, so a file can't be guessed, and links in your site always go through the access check. To refuse the folder completely, add `location ^~ /wp-content/uploads/aluleth-membership-files/ { deny all; }` to your Nginx settings.
+Yes, with no server rule to add. Each file is saved under a random name ending in .php and starts with a line that stops PHP at once, so opening its address returns an empty page on any server (Apache, LiteSpeed, Nginx, IIS). Members download it only through your site, after the access check, with its original name and content. Files uploaded with 0.4.2 or earlier are moved to this form automatically the next time an administrator opens the dashboard (or when someone downloads them).
 
 = I use Paid Memberships Pro, Restrict Content or Simple Membership. Can I move? =
 
@@ -152,6 +152,10 @@ Aluleth Membership comes with the screens shared by all Aluleth plugins (Aluleth
 * PayPal: the Payments settings and the PayPal code are only used with Aluleth Forms; they are hidden and never run with Aluleth Membership alone. [User agreement](https://www.paypal.com/webapps/mpp/ua/useragreement-full), [Privacy statement](https://www.paypal.com/webapps/mpp/ua/privacy-full).
 
 == Changelog ==
+
+= 0.4.3 =
+* Member files can no longer be opened from their address on Nginx or any other server: each one is saved under a random .php name behind a line that stops PHP, and only the download link sends it after the access check. Files uploaded with earlier versions are moved to this form automatically.
+* Shared Aluleth screens: contact import files are protected the same way, and texts sent to PayPal, Slack, Discord and Telegram are shortened without the PHP mbstring extension.
 
 = 0.4.2 =
 * New accounts always get a low-privilege role (one that can do nothing more than read); other roles are no longer offered in Settings.

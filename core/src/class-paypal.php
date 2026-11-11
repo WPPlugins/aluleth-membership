@@ -346,7 +346,7 @@ final class PayPal {
 			$unit    = (float) self::value( $item['price'], $currency );
 			$sum    += $unit * $qty;
 			$items[] = array(
-				'name'        => mb_substr( wp_strip_all_tags( (string) $item['name'] ), 0, 127 ),
+				'name'        => Util::cut( wp_strip_all_tags( (string) $item['name'] ), 127 ),
 				'quantity'    => (string) $qty,
 				'unit_amount' => array(
 					'currency_code' => $currency,
@@ -375,9 +375,9 @@ final class PayPal {
 			);
 		}
 		$unit = array(
-			'reference_id' => mb_substr( (string) $args['reference'], 0, 127 ),
-			'custom_id'    => mb_substr( (string) $args['reference'], 0, 127 ),
-			'description'  => mb_substr( wp_strip_all_tags( (string) $args['description'] ), 0, 127 ),
+			'reference_id' => Util::cut( (string) $args['reference'], 127 ),
+			'custom_id'    => Util::cut( (string) $args['reference'], 127 ),
+			'description'  => Util::cut( wp_strip_all_tags( (string) $args['description'] ), 127 ),
 			'amount'       => array(
 				'currency_code' => $currency,
 				'value'         => self::value( max( 0, $sum + $tax - $discount ), $currency ),
@@ -393,7 +393,7 @@ final class PayPal {
 				'purchase_units'      => array( $unit ),
 				// Works for every button (PayPal, Pay Later, card); payment_source would tie the order to PayPal only.
 				'application_context' => array(
-					'brand_name'          => mb_substr( wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES ), 0, 127 ),
+					'brand_name'          => Util::cut( wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES ), 127 ),
 					'shipping_preference' => 'NO_SHIPPING',
 					'user_action'         => 'PAY_NOW',
 				),

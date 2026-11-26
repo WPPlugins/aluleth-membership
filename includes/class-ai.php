@@ -326,7 +326,7 @@ final class AI {
 				'aluleth-membership/end-access',
 				array(
 					'label'               => __( 'End a membership given by hand', 'aluleth-membership' ),
-					'description'         => __( 'Ends the access to a level that was given by hand, by a free sign-up, a form or an import. Access paid in FluentCart or WooCommerce is never ended here: it follows the order or subscription in the store. Use only when the site owner asks for it.', 'aluleth-membership' ),
+					'description'         => __( 'Ends the access to a level that was given by hand, by a free sign-up, a form or an import. Access paid in FluentCart, WooCommerce or Aluleth Commerce is never ended here: it follows the order or subscription in the store. Use only when the site owner asks for it.', 'aluleth-membership' ),
 					'category'            => self::CATEGORY,
 					'input_schema'        => array(
 						'type'                 => 'object',
@@ -365,7 +365,7 @@ final class AI {
 		$levels = array();
 		foreach ( Levels::all() as $id => $level ) {
 			$ways = array();
-			foreach ( array( 'fluentcart', 'woocommerce', 'forms' ) as $key ) {
+			foreach ( array( 'fluentcart', 'woocommerce', 'commerce', 'forms' ) as $key ) {
 				if ( $level[ $key ] ) {
 					$ways[] = $key;
 				}
@@ -532,7 +532,7 @@ final class AI {
 			if ( (int) $row->level_id !== $level || 'ended' === $row->status ) {
 				continue;
 			}
-			if ( in_array( $row->source, array( 'fluentcart', 'woocommerce' ), true ) ) {
+			if ( in_array( $row->source, array( 'fluentcart', 'woocommerce', 'aluleth-commerce' ), true ) ) {
 				++$store;
 				continue;
 			}

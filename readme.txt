@@ -2,13 +2,13 @@
 Contributors: aluleth
 Tags: membership, paid memberships, restrict content, members only, paywall
 Requires at least: 7.0
-Tested up to: 7.1
+Tested up to: 7.2
 Requires PHP: 7.4
-Stable tag: 0.4.3
+Stable tag: 0.4.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Sell membership levels with WooCommerce or FluentCart, offer free sign-ups, restrict content with a teaser and a join card, and give members an area.
+Sell membership levels with WooCommerce, FluentCart or Aluleth Commerce, offer free sign-ups, restrict content with a teaser and a join card, and give members an area.
 
 == Description ==
 
@@ -26,6 +26,7 @@ No fee on your sales, no add-on to buy for the basics.
 
 * **FluentCart**: buying one of the products you tick gives the level. With a subscription, access follows it: paused when it is paused, kept until the end of the paid period when it is cancelled, ended when it expires. A full refund or a cancelled order ends the access.
 * **WooCommerce**: a paid order with one of your products gives the level; a refund or a cancellation ends it. WooCommerce Subscriptions is followed too.
+* **Aluleth Commerce**: buying one of the products you tick gives the level; a full refund ends it.
 * **Free sign-up** from a join card: name and email, then one click in the email. No password.
 * **Aluleth Forms**: sending a form gives the level (after the payment, for a payment form).
 * **By hand**, with an end date if you want.
@@ -60,14 +61,14 @@ Upload guides, templates or recordings in Content access and choose the levels t
 **Join card and member area**
 
 * A designed join card with your levels, their price and button, the free sign-up and the sign-in form. Three designs and your button colour.
-* A member area: memberships with renewal date and billing link (FluentCart or WooCommerce), content opened for the member and opening soon, downloads, past memberships, profile.
+* A member area: memberships with renewal date and billing link (FluentCart, WooCommerce or Aluleth Commerce), content opened for the member and opening soon, downloads, past memberships, profile.
 * Both as a block, an Elementor widget and a shortcode (`[aluleth_join_card]`, `[aluleth_member_area]`).
 
 **Move from another membership plugin**
 
 Import from Paid Memberships Pro, Restrict Content (Kadence Memberships, formerly Restrict Content Pro) and Simple Membership: levels (new ones, or joined to yours), the members who have access today with their start and end dates, and the content rules. Check one member first, or test with the first 10. Nothing is changed or deleted in the other plugin, no email is sent, and you can run it again without doubles.
 
-Payments stay with the other plugin: "Keep following" checks it every hour while it is active, gives the level to its new members and follows renewals and ends, until you are ready to sell with FluentCart or WooCommerce.
+Payments stay with the other plugin: "Keep following" checks it every hour while it is active, gives the level to its new members and follows renewals and ends, until you are ready to sell with FluentCart, WooCommerce or Aluleth Commerce.
 
 **AI agents (MCP)**
 
@@ -89,13 +90,13 @@ Members are Aluleth contacts with a "Member: level" tag and "Became a member" / 
 
 1. Install and activate the plugin.
 2. Go to Aluleth › Membership › Levels and create a level.
-3. Choose how people join it: a FluentCart or WooCommerce product, the free sign-up, a form.
+3. Choose how people join it: a FluentCart, WooCommerce or Aluleth Commerce product, the free sign-up, a form.
 4. In Content access, choose what is for members, or use the "Membership" box when you edit a post. Coming from another membership plugin? Use Import.
 5. In Settings, create the member area page and, if you want, a plans page.
 
 == Frequently Asked Questions ==
 
-= Do I need FluentCart or WooCommerce? =
+= Do I need a store plugin (FluentCart, WooCommerce or Aluleth Commerce)? =
 
 No. Without a store, people join with the free sign-up, a form or when you add them. With a store, they join by buying.
 
@@ -113,7 +114,7 @@ They see what visitors see: the beginning of the post and the join card.
 
 = Are member files safe on Nginx? =
 
-Yes, with no server rule to add. Each file is saved under a random name ending in .php and starts with a line that stops PHP at once, so opening its address returns an empty page on any server (Apache, LiteSpeed, Nginx, IIS). Members download it only through your site, after the access check, with its original name and content. Files uploaded with 0.4.2 or earlier are moved to this form automatically the next time an administrator opens the dashboard (or when someone downloads them).
+Each file is saved under a long random name ending in .bin, so it is never run or shown as a page, and nobody can guess its address. The folder is also closed to web visits by its .htaccess (Apache, LiteSpeed) and web.config (IIS) rules. Members download a file only through your site, after the access check, with its original name and content. Files uploaded with earlier versions are moved to this form automatically the next time an administrator opens the dashboard (or when someone downloads them).
 
 = I use Paid Memberships Pro, Restrict Content or Simple Membership. Can I move? =
 
@@ -133,7 +134,7 @@ Nothing, unless you tick it in Aluleth › Settings. WordPress accounts are neve
 
 == External services ==
 
-Aluleth Membership itself does not contact any outside service. Levels, members, rules, sign-in links and member emails stay on your site; member emails go through your site's own email sending. Purchases are read from FluentCart or WooCommerce on your site.
+Aluleth Membership itself does not contact any outside service. Levels, members, rules, sign-in links and member emails stay on your site; member emails go through your site's own email sending. Purchases are read from FluentCart, WooCommerce or Aluleth Commerce on your site.
 
 = Shared Aluleth screens =
 
@@ -152,6 +153,11 @@ Aluleth Membership comes with the screens shared by all Aluleth plugins (Aluleth
 * PayPal: the Payments settings and the PayPal code are only used with Aluleth Forms; they are hidden and never run with Aluleth Membership alone. [User agreement](https://www.paypal.com/webapps/mpp/ua/useragreement-full), [Privacy statement](https://www.paypal.com/webapps/mpp/ua/privacy-full).
 
 == Changelog ==
+
+= 0.4.4 =
+* Aluleth Commerce as a store: buying one of the products you tick on a level gives it; a full refund ends it; the member area links to the store account for billing.
+* Member files are kept as plain files with a long random name and the .bin extension (no PHP file is written in the uploads folder any more); files kept by 0.4.2 and 0.4.3 are turned into plain files once, the next time an administrator opens the dashboard or someone downloads them.
+* Shared Aluleth core 0.18.8: plain CSV import files in `uploads/<plugin>/imports/`, no PHP file written.
 
 = 0.4.3 =
 * Member files can no longer be opened from their address on Nginx or any other server: each one is saved under a random .php name behind a line that stops PHP, and only the download link sends it after the access check. Files uploaded with earlier versions are moved to this form automatically.

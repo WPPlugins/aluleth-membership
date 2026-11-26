@@ -109,7 +109,7 @@ final class Members {
 	 *
 	 * @param int    $user_id  User id.
 	 * @param int    $level_id Level id.
-	 * @param string $source   fluentcart, woocommerce, form, signup, manual, import, pmpro, rcp or swpm.
+	 * @param string $source   fluentcart, woocommerce, aluleth-commerce, form, signup, manual, import, pmpro, rcp or swpm.
 	 * @param string $ref      Reference in the source (e.g. "order:12", "sub:4").
 	 * @param array  $args     'expires_at' (UTC datetime, null for no end, or 'level' to use the
 	 *                         level's duration — the default), 'status' ('active' or 'pending'),

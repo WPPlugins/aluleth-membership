@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Aluleth Membership
  * Description:       Membership levels for your site: access given by a FluentCart or WooCommerce purchase, a free sign-up, a form or by hand. Members-only content with a teaser and a designed join card, a member area and sign-in links by email. No fee on your sales.
- * Version:           0.4.3
+ * Version:           0.4.4
  * Requires at least: 7.0
  * Requires PHP:      7.4
  * Author:            Aluleth
@@ -17,7 +17,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ALULETH_MEMBERSHIP_VERSION', '0.4.3' );
+define( 'ALULETH_MEMBERSHIP_VERSION', '0.4.4' );
 define( 'ALULETH_MEMBERSHIP_FILE', __FILE__ );
 define( 'ALULETH_MEMBERSHIP_DIR', __DIR__ );
 define( 'ALULETH_MEMBERSHIP_CORE_MIN', '0.18.0' );

@@ -198,7 +198,8 @@ final class Integrations {
 	 *
 	 * @param array $feeds   Clean feeds.
 	 * @param array $payload Payload.
-	 * @param array $context 'object' => array( type, id ), 'contact' => id.
+	 * @param array $context 'object' => array( type, id ), 'contact' => id, 'timeline' => false to keep
+	 *                       the send out of the contact's timeline (messages to the team, say).
 	 * @return int Jobs queued.
 	 */
 	public static function dispatch( array $feeds, array $payload, array $context = array() ) {
@@ -234,14 +235,14 @@ final class Integrations {
 				Queue::add( 'integration', array( 'feed' => array( 'service' => $feed['service'] ) ), $meta );
 				continue;
 			}
-			if ( Queue::add(
-				'integration',
-				array(
-					'feed'    => $feed,
-					'payload' => $payload,
-				),
-				$meta
-			) ) {
+			$job = array(
+				'feed'    => $feed,
+				'payload' => $payload,
+			);
+			if ( isset( $context['timeline'] ) && false === $context['timeline'] ) {
+				$job['timeline'] = false;
+			}
+			if ( Queue::add( 'integration', $job, $meta ) ) {
 				++$count;
 			}
 		}
@@ -282,6 +283,10 @@ final class Integrations {
 	public static function after_job( $row, $result ) {
 		unset( $result );
 		if ( ! $row || 'integration' !== $row->hook || ! $row->contact_id || ! in_array( $row->status, array( 'done', 'failed' ), true ) ) {
+			return;
+		}
+		$args = isset( $row->args ) ? json_decode( (string) $row->args, true ) : array();
+		if ( is_array( $args ) && isset( $args['timeline'] ) && false === $args['timeline'] ) {
 			return;
 		}
 		aluleth_core()->events()->record(

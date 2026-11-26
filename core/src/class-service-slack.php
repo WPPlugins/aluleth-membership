@@ -159,7 +159,7 @@ final class Service_Slack extends Service {
 			$context[] = ':moneybag: ' . self::esc( $a['payment'] );
 		}
 		if ( '' !== $a['link'] ) {
-			$context[] = '<' . esc_url_raw( $a['link'] ) . '|' . self::esc( __( 'Open the entry', 'aluleth-membership' ) ) . '>';
+			$context[] = '<' . esc_url_raw( $a['link'] ) . '|' . self::esc( $a['link_label'] ) . '>';
 		}
 		if ( $context ) {
 			$blocks[] = array(

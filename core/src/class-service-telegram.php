@@ -198,7 +198,7 @@ final class Service_Telegram extends Service_Api {
 			$out .= "\n\n" . self::esc( $a['payment'] );
 		}
 		if ( '' !== $a['link'] ) {
-			$out .= "\n\n" . '<a href="' . esc_url( $a['link'] ) . '">' . self::esc( __( 'Open the entry', 'aluleth-membership' ) ) . '</a>';
+			$out .= "\n\n" . '<a href="' . esc_url( $a['link'] ) . '">' . self::esc( $a['link_label'] ) . '</a>';
 		}
 		return Util::cut( $out, 4000 );
 	}

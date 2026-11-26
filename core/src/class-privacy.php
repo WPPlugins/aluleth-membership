@@ -56,9 +56,10 @@ final class Privacy {
 	 * Exports the contact record, custom fields, tags and timeline.
 	 *
 	 * @param string $email Email address.
+	 * @param int    $page  Page of the export (the history is sent 500 events at a time).
 	 * @return array
 	 */
-	public static function export( $email ) {
+	public static function export( $email, $page = 1 ) {
 		$core    = aluleth_core();
 		$contact = $core->contacts()->get_by_email( $email );
 		if ( ! $contact ) {
@@ -67,7 +68,11 @@ final class Privacy {
 				'done' => true,
 			);
 		}
-		$data = array();
+		global $wpdb;
+		$page  = max( 1, (int) $page );
+		$per   = 500;
+		$items = array();
+		$data  = array();
 		foreach ( array( 'email', 'first_name', 'last_name', 'phone', 'status', 'language', 'country', 'created_at' ) as $key ) {
 			if ( '' !== (string) $contact->$key ) {
 				$data[] = array(
@@ -89,15 +94,18 @@ final class Privacy {
 				'value' => implode( ', ', $tags ),
 			);
 		}
-		$items = array(
-			array(
+		if ( 1 === $page ) {
+			$items[] = array(
 				'group_id'    => 'aluleth-contact',
 				'group_label' => __( 'Contact', 'aluleth-membership' ),
 				'item_id'     => 'aluleth-contact-' . $contact->id,
 				'data'        => $data,
-			),
-		);
-		foreach ( $core->events()->for_contact( (int) $contact->id, 500 ) as $event ) {
+			);
+		}
+		// The whole history, page after page (WordPress asks for the next page until done).
+		$events = (array) $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM %i WHERE contact_id = %d ORDER BY id ASC LIMIT %d OFFSET %d', $wpdb->prefix . 'aluleth_events', (int) $contact->id, $per, ( $page - 1 ) * $per ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		foreach ( $events as $event ) {
+			$event->data = $event->data ? json_decode( $event->data, true ) : array();
 			$items[] = array(
 				'group_id'    => 'aluleth-timeline',
 				'group_label' => __( 'Contact history', 'aluleth-membership' ),
@@ -116,7 +124,7 @@ final class Privacy {
 		}
 		return array(
 			'data' => $items,
-			'done' => true,
+			'done' => count( $events ) < $per,
 		);
 	}
 

@@ -70,6 +70,7 @@ final class Levels {
 			'free_signup'  => false,
 			'fluentcart'   => array(),
 			'woocommerce'  => array(),
+			'commerce'     => array(),
 			'forms'        => array(),
 			'duration'     => 'lifetime',
 			'duration_n'   => 1,
@@ -158,6 +159,7 @@ final class Levels {
 			'free_signup'  => ! empty( $raw['free_signup'] ),
 			'fluentcart'   => self::ids( isset( $raw['fluentcart'] ) ? $raw['fluentcart'] : array() ),
 			'woocommerce'  => self::ids( isset( $raw['woocommerce'] ) ? $raw['woocommerce'] : array() ),
+			'commerce'     => self::ids( isset( $raw['commerce'] ) ? $raw['commerce'] : array() ),
 			'forms'        => self::ids( isset( $raw['forms'] ) ? $raw['forms'] : array() ),
 			'duration'     => isset( $raw['duration'] ) && in_array( $raw['duration'], array( 'lifetime', 'days', 'months', 'years' ), true ) ? $raw['duration'] : $d['duration'],
 			'duration_n'   => isset( $raw['duration_n'] ) ? max( 1, min( 3650, absint( $raw['duration_n'] ) ) ) : 1,
@@ -313,7 +315,7 @@ final class Levels {
 		if ( '' !== $level['button_url'] ) {
 			return $level['button_url'];
 		}
-		foreach ( array_merge( $level['fluentcart'], $level['woocommerce'] ) as $product_id ) {
+		foreach ( array_merge( $level['fluentcart'], $level['woocommerce'], $level['commerce'] ) as $product_id ) {
 			if ( 'publish' === get_post_status( $product_id ) ) {
 				return (string) get_permalink( $product_id );
 			}

@@ -404,7 +404,7 @@ abstract class Service {
 	 * Content of a team alert: title, answers, payment and a link to the entry.
 	 *
 	 * @param array $payload Payload.
-	 * @return array{title: string, lines: array, link: string, payment: string, test: bool}
+	 * @return array{title: string, lines: array, link: string, link_label: string, payment: string, test: bool}
 	 */
 	protected static function alert( array $payload ) {
 		$source = isset( $payload['source'] ) ? (array) $payload['source'] : array();
@@ -430,13 +430,16 @@ abstract class Service {
 			/* translators: %s: amount. */
 			$payment = sprintf( __( 'Paid: %s', 'aluleth-membership' ), PayPal::format( (float) $payload['payment']['amount'], (string) $payload['payment']['currency'] ) );
 		}
+		// A plugin can word its own alert (Support: "New ticket #12", "Open the ticket").
+		$own = isset( $payload['alert'] ) && is_array( $payload['alert'] ) ? $payload['alert'] : array();
 		return array(
 			/* translators: %s: form name. */
-			'title'   => sprintf( __( 'New entry: %s', 'aluleth-membership' ), $title ),
-			'lines'   => array_slice( $lines, 0, 24 ),
-			'link'    => $link,
-			'payment' => $payment,
-			'test'    => isset( $payload['event'] ) && 'test' === $payload['event'],
+			'title'      => ! empty( $own['title'] ) ? Util::cut( (string) $own['title'], 200 ) : sprintf( __( 'New entry: %s', 'aluleth-membership' ), $title ),
+			'lines'      => array_slice( $lines, 0, 24 ),
+			'link'       => ! empty( $own['link'] ) ? esc_url_raw( (string) $own['link'] ) : $link,
+			'link_label' => ! empty( $own['link_label'] ) ? (string) $own['link_label'] : __( 'Open the entry', 'aluleth-membership' ),
+			'payment'    => $payment,
+			'test'       => isset( $payload['event'] ) && 'test' === $payload['event'],
 		);
 	}
 

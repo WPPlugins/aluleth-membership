@@ -37,13 +37,11 @@ final class Import {
 	const KEEP_DAYS = 7;
 
 	/**
-	 * First line of every file in the import folder. The files are saved with
-	 * a .php name: a direct request runs this line, which stops at once and
-	 * sends nothing (PHP does not even read what follows), or is refused by
-	 * servers that never run PHP from uploads. This works on any web server
-	 * (Apache, LiteSpeed, Nginx, IIS), with or without the folder's rules.
+	 * Length of the first line that versions before 0.18.5 of the shared core wrote
+	 * at the top of their import files; such files are turned back into plain .csv
+	 * files once (see plain_old_files()).
 	 */
-	const GUARD = "<?php exit; __halt_compiler(); ?>\n";
+	const OLD_HEAD = 34;
 
 	/**
 	 * Where a column can go.
@@ -68,20 +66,24 @@ final class Import {
 	}
 
 	/**
-	 * Folder that holds the files being imported (not listed, not guessable).
-	 * Every file in it starts with the GUARD line (see above).
+	 * Folder that holds the files being imported, in the uploads folder: a folder
+	 * named after the plugin (the first Aluleth plugin that imported, kept for the
+	 * others, which share the import screens), then "imports". Plain .csv files with
+	 * random names (not listed, not guessable), the folder closed to web requests by
+	 * its .htaccess and web.config, and the files deleted a week after the import.
 	 *
 	 * @return string Path with a trailing slash, or '' when it cannot be created.
 	 */
 	public static function dir() {
 		$upload = wp_upload_dir( null, false );
-		$dir    = trailingslashit( $upload['basedir'] ) . 'aluleth-imports/';
+		$base   = trailingslashit( $upload['basedir'] );
+		$dir    = $base . self::folder() . '/imports/';
 		if ( ! is_dir( $dir ) && ! wp_mkdir_p( $dir ) ) {
 			return '';
 		}
-		// phpcs:disable WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- tiny guard files in our own folder.
-		if ( ! file_exists( $dir . 'index.php' ) ) {
-			file_put_contents( $dir . 'index.php', "<?php\n// Silence is golden.\n" );
+		// phpcs:disable WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- tiny access rules in our own folder.
+		if ( ! file_exists( $dir . 'index.html' ) ) {
+			file_put_contents( $dir . 'index.html', '' );
 		}
 		if ( ! file_exists( $dir . '.htaccess' ) ) {
 			file_put_contents( $dir . '.htaccess', "Require all denied\nDeny from all\n" );
@@ -90,34 +92,43 @@ final class Import {
 			file_put_contents( $dir . 'web.config', "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<configuration><system.webServer><authorization><deny users=\"*\" /></authorization></system.webServer></configuration>\n" );
 		}
 		// phpcs:enable
-		self::guard_old_files( $dir );
+		self::plain_old_files( $dir, $base . 'aluleth-imports/' );
 		return $dir;
 	}
 
 	/**
-	 * Where the rows of a file start: after the GUARD line (files saved as
-	 * .php), at 0 for a .csv file left by an earlier version.
+	 * Name of the plugin folder in uploads (the slug of the plugin whose copy of the
+	 * shared core first made it), kept once chosen.
 	 *
-	 * @param string $file File name.
-	 * @return int
+	 * @return string
 	 */
-	private static function start_of( $file ) {
-		return '.php' === substr( (string) $file, -4 ) ? strlen( self::GUARD ) : 0;
+	public static function folder() {
+		$name = sanitize_key( (string) get_option( 'aluleth_core_import_folder', '' ) );
+		if ( '' === $name ) {
+			$name = defined( 'ALULETH_CORE_PATH' ) ? sanitize_key( basename( dirname( (string) ALULETH_CORE_PATH ) ) ) : '';
+			if ( '' === $name || 0 !== strpos( $name, 'aluleth' ) ) {
+				$name = 'aluleth';
+			}
+			update_option( 'aluleth_core_import_folder', $name, false );
+		}
+		return $name;
 	}
 
 	/**
-	 * Moves the .csv files of earlier versions behind the GUARD line, once:
-	 * files of jobs still in progress become .php files (their positions move
-	 * by the length of the line), files no job uses are deleted.
+	 * Moves the files written by earlier versions of the shared core (in the
+	 * "aluleth-imports" folder, with a .php name and a first line to skip) to the
+	 * import folder as plain .csv files, once: files of jobs still in progress are
+	 * rewritten without that line (their positions move back by its length), and
+	 * the old folder is deleted with what is left in it.
 	 *
 	 * @param string $dir Import folder.
+	 * @param string $old_dir Folder of earlier versions.
 	 * @return void
 	 */
-	private static function guard_old_files( $dir ) {
-		if ( '2' === get_option( 'aluleth_core_import_files' ) ) {
+	private static function plain_old_files( $dir, $old_dir ) {
+		if ( '4' === get_option( 'aluleth_core_import_files' ) ) {
 			return;
 		}
-		$used = array();
 		foreach ( array_keys( (array) get_option( self::INDEX, array() ) ) as $id ) {
 			$job = self::get( $id );
 			if ( ! $job ) {
@@ -125,41 +136,42 @@ final class Import {
 			}
 			$changed = false;
 			foreach ( array( 'file', 'skipped' ) as $key ) {
-				$old = (string) $job[ $key ];
-				if ( '' === $old || '.csv' !== substr( $old, -4 ) || ! file_exists( $dir . $old ) ) {
+				$old = basename( (string) $job[ $key ] );
+				if ( '' === $old || ! is_file( $old_dir . $old ) ) {
 					continue;
 				}
-				$new = substr( $old, 0, -4 ) . '.php';
-				// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents, WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- our own import folder.
-				if ( false === file_put_contents( $dir . $new, self::GUARD . (string) file_get_contents( $dir . $old ), LOCK_EX ) ) {
+				$php = '.php' === substr( $old, -4 );
+				$new = $php ? substr( $old, 0, -4 ) . '.csv' : $old;
+				// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- our own import folder.
+				$data = (string) file_get_contents( $old_dir . $old );
+				// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- our own import folder.
+				if ( false === file_put_contents( $dir . $new, $php ? substr( $data, self::OLD_HEAD ) : $data, LOCK_EX ) ) {
 					continue;
 				}
-				wp_delete_file( $dir . $old );
 				$job[ $key ] = $new;
-				if ( 'file' === $key ) {
-					$job['offset'] = (int) $job['offset'] + strlen( self::GUARD );
-					$job['start']  = (int) $job['start'] + strlen( self::GUARD );
+				if ( $php && 'file' === $key ) {
+					$job['offset'] = max( 0, (int) $job['offset'] - self::OLD_HEAD );
+					$job['start']  = max( 0, (int) $job['start'] - self::OLD_HEAD );
 				}
 				$changed = true;
 			}
 			if ( $changed ) {
 				self::save( $job );
 			}
-			$used[] = $job['file'];
-			$used[] = $job['skipped'];
 		}
-		foreach ( (array) glob( $dir . '*.csv' ) as $path ) {
-			if ( ! in_array( basename( $path ), $used, true ) ) {
-				wp_delete_file( $path );
+		if ( is_dir( $old_dir ) ) {
+			foreach ( (array) scandir( $old_dir ) as $name ) {
+				if ( is_file( $old_dir . $name ) ) {
+					wp_delete_file( $old_dir . $name );
+				}
 			}
+			rmdir( $old_dir ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_rmdir -- our own empty folder.
 		}
-		if ( ! glob( $dir . '*.csv' ) ) {
-			update_option( 'aluleth_core_import_files', '2', true );
-		}
+		update_option( 'aluleth_core_import_files', '4', true );
 	}
 
 	/**
-	 * Sends a file of the import folder without its GUARD line.
+	 * Sends a file of the import folder.
 	 *
 	 * @param string $file File name.
 	 * @return void
@@ -169,7 +181,6 @@ final class Import {
 		// phpcs:disable WordPress.WP.AlternativeFunctions.file_system_operations_fopen, WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- streaming our own file.
 		$handle = fopen( $path, 'rb' );
 		if ( $handle ) {
-			fseek( $handle, self::start_of( $file ) );
 			fpassthru( $handle );
 			fclose( $handle );
 		}
@@ -405,8 +416,8 @@ final class Import {
 			return new \WP_Error( 'empty', __( 'This file is empty.', 'aluleth-membership' ) );
 		}
 		$job['delimiter'] = self::sniff( $text );
-		$job['file']      = $job['id'] . '.php';
-		file_put_contents( self::dir() . $job['file'], self::GUARD . $text ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- our protected import folder.
+		$job['file']      = $job['id'] . '.csv';
+		file_put_contents( self::dir() . $job['file'], $text ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- our protected import folder.
 
 		$first = self::read( $job, 0, 2 );
 		if ( ! $first['rows'] ) {
@@ -466,7 +477,7 @@ final class Import {
 		if ( ! $handle ) {
 			return $out;
 		}
-		fseek( $handle, max( (int) $offset, self::start_of( $job['file'] ) ) );
+		fseek( $handle, max( 0, (int) $offset ) );
 		$found = 0;
 		while ( $found < $limit ) {
 			$cells = fgetcsv( $handle, 0, $job['delimiter'], '"', '' );
@@ -877,7 +888,7 @@ final class Import {
 		}
 		$new = '' === $job['skipped'];
 		if ( $new ) {
-			$job['skipped'] = $job['id'] . '-skipped.php';
+			$job['skipped'] = $job['id'] . '-skipped.csv';
 		}
 		// phpcs:disable WordPress.WP.AlternativeFunctions.file_system_operations_fopen, WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- appending rows one by one.
 		$handle = fopen( self::dir() . $job['skipped'], 'a' );
@@ -885,7 +896,6 @@ final class Import {
 			return;
 		}
 		if ( $new ) {
-			fwrite( $handle, self::GUARD ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite
 			fputcsv( $handle, array_merge( array( __( 'Reason', 'aluleth-membership' ) ), $job['header'] ), ',', '"', '' );
 		}
 		fputcsv( $handle, array_merge( array( $reason ), array_map( array( __CLASS__, 'safe_cell' ), $cells ) ), ',', '"', '' );

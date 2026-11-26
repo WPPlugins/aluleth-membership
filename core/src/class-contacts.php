@@ -47,7 +47,9 @@ final class Contacts {
 	 * @param array  $context 'source' (e.g. 'aluleth-forms'), 'consent' (bool), 'status' (wanted status),
 	 *                        'fill_only' (bool: only fill columns and fields that are still empty),
 	 *                        'resubscribe' (bool: allow subscribing a contact who unsubscribed, bounced or complained),
-	 *                        'link_user' (bool, default true: link a new contact to the WordPress user with this email).
+	 *                        'link_user' (bool, default true: link a new contact to the WordPress user with this email),
+	 *                        'quiet' (bool: a copy of old data, an import say: no "contact.created" event and
+	 *                        no new last activity).
 	 * @return int Contact id, or 0 when the email is not valid.
 	 */
 	public function upsert( $email, array $data = array(), array $context = array() ) {
@@ -91,10 +93,24 @@ final class Contacts {
 				} elseif ( 'subscribed' !== $wanted && 'transactional' !== $wanted ) {
 					$update['status'] = $wanted;
 				}
+				if ( isset( $update['status'] ) ) {
+					if ( $update['status'] === $current ) {
+						unset( $update['status'] );
+					} else {
+						$update['status'] = $this->filter_status( $update['status'], $current, $email, $context );
+					}
+				}
 			}
-			$update['updated_at']       = $now;
-			$update['last_activity_at'] = $now;
-			$wpdb->update( $this->table(), $update, array( 'id' => $id ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			// "quiet": a copy of old data (an import) is not activity of the person.
+			if ( empty( $context['quiet'] ) || $update ) {
+				$update['updated_at'] = $now;
+			}
+			if ( empty( $context['quiet'] ) ) {
+				$update['last_activity_at'] = $now;
+			}
+			if ( $update ) {
+				$wpdb->update( $this->table(), $update, array( 'id' => $id ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			}
 			$created = false;
 		} else {
 			$row  = array_merge(
@@ -109,7 +125,8 @@ final class Contacts {
 					'last_activity_at' => $now,
 				)
 			);
-			$user = ! isset( $context['link_user'] ) || $context['link_user'] ? get_user_by( 'email', $email ) : false;
+			$row['status'] = $this->filter_status( $row['status'], '', $email, $context );
+			$user          = ! isset( $context['link_user'] ) || $context['link_user'] ? get_user_by( 'email', $email ) : false;
 			if ( $user ) {
 				$row['user_id'] = (int) $user->ID;
 			}
@@ -136,7 +153,7 @@ final class Contacts {
 
 		wp_cache_delete( 'contact_' . $email, 'aluleth' );
 
-		if ( $created ) {
+		if ( $created && empty( $context['quiet'] ) ) {
 			aluleth_core()->events()->record(
 				'contact.created',
 				array(
@@ -147,6 +164,30 @@ final class Contacts {
 		}
 
 		return $id;
+	}
+
+	/**
+	 * The status a contact gets from upsert(), once other plugins had their say.
+	 *
+	 * @param string $status   Status upsert() would give.
+	 * @param string $previous Status before ('' for a new contact).
+	 * @param string $email    Email address.
+	 * @param array  $context  upsert() context.
+	 * @return string
+	 */
+	private function filter_status( $status, $previous, $email, array $context ) {
+		/**
+		 * Filters the email status a contact gets when it is created or updated.
+		 * Aluleth CRM uses it for double opt-in: a sign-up waits as "pending"
+		 * until the person confirms by email.
+		 *
+		 * @param string $status   New status.
+		 * @param string $previous Status before ('' for a new contact).
+		 * @param string $email    Email address.
+		 * @param array  $context  Context given to upsert() ('source', 'consent'…).
+		 */
+		$filtered = (string) apply_filters( 'aluleth/contact/status', $status, $previous, $email, $context );
+		return in_array( $filtered, self::STATUSES, true ) ? $filtered : $status;
 	}
 
 	/**

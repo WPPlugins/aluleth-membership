@@ -306,7 +306,7 @@ final class Admin {
 	 * @return bool
 	 */
 	public static function has_source( array $level ) {
-		return $level['free_signup'] || $level['fluentcart'] || $level['woocommerce'] || $level['forms'];
+		return $level['free_signup'] || $level['fluentcart'] || $level['woocommerce'] || $level['commerce'] || $level['forms'];
 	}
 
 	/**
@@ -331,6 +331,7 @@ final class Admin {
 		$labels = array(
 			'fluentcart'  => 'FluentCart',
 			'woocommerce' => 'WooCommerce',
+			'aluleth-commerce' => 'Aluleth Commerce',
 			'form'        => __( 'Form', 'aluleth-membership' ),
 			'signup'      => __( 'Free sign-up', 'aluleth-membership' ),
 			'manual'      => __( 'By hand', 'aluleth-membership' ),
@@ -409,6 +410,9 @@ final class Admin {
 		}
 		if ( $level['woocommerce'] ) {
 			$bits[] = 'WooCommerce';
+		}
+		if ( $level['commerce'] ) {
+			$bits[] = 'Aluleth Commerce';
 		}
 		if ( $level['forms'] ) {
 			$bits[] = __( 'Form', 'aluleth-membership' );
@@ -571,6 +575,11 @@ final class Admin {
 			self::checklist( 'level[woocommerce]', self::items( 'product' ), $level['woocommerce'], __( 'No WooCommerce product yet.', 'aluleth-membership' ) );
 		} else {
 			echo '<p class="al-muted">' . esc_html__( 'WooCommerce is not active on this site.', 'aluleth-membership' ) . '</p>';
+		}
+		if ( post_type_exists( 'alc_product' ) || $level['commerce'] ) {
+			echo '<h3>Aluleth Commerce</h3>';
+			echo '<p class="description">' . esc_html__( 'A paid order with one of these products gives the level; a full refund ends it.', 'aluleth-membership' ) . '</p>';
+			self::checklist( 'level[commerce]', self::items( 'alc_product' ), $level['commerce'], __( 'No Aluleth Commerce product yet.', 'aluleth-membership' ) );
 		}
 		echo '<h3>' . esc_html__( 'Aluleth Forms', 'aluleth-membership' ) . '</h3>';
 		if ( post_type_exists( 'aluleth_form' ) ) {

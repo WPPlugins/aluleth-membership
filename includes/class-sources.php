@@ -45,6 +45,11 @@ final class Sources {
 		add_action( 'woocommerce_order_status_cancelled', array( __CLASS__, 'wc_cancelled' ), 20 );
 		add_action( 'woocommerce_subscription_status_updated', array( __CLASS__, 'wcs_status' ), 20, 3 );
 
+		// Aluleth Commerce.
+		add_action( 'alc_order_paid', array( __CLASS__, 'alc_paid' ), 20 );
+		add_action( 'alc_order_refunded', array( __CLASS__, 'alc_refunded' ), 20 );
+		add_action( 'alc_order_status_cancelled', array( __CLASS__, 'alc_cancelled' ), 20 );
+
 		// Aluleth Forms.
 		add_action( 'aluleth_forms/entry_created', array( __CLASS__, 'form_entry' ), 20, 4 );
 	}
@@ -396,6 +401,62 @@ final class Sources {
 	}
 
 	/**
+	 * Aluleth Commerce: a paid order with a product of a level gives it (orders brought over
+	 * from another store keep the access that store gave).
+	 *
+	 * @param array $order Order.
+	 * @return void
+	 */
+	public static function alc_paid( $order ) {
+		if ( ! is_array( $order ) || empty( $order['id'] ) || ! function_exists( 'alc_order_summary' ) ) {
+			return;
+		}
+		$summary = alc_order_summary( (int) $order['id'] );
+		if ( ! $summary || 'import' === $summary['source'] ) {
+			return;
+		}
+		$posts = array();
+		foreach ( $summary['lines'] as $line ) {
+			$posts[] = (int) $line['post_id'];
+		}
+		$levels = self::levels_for( 'commerce', $posts );
+		if ( ! $levels ) {
+			return;
+		}
+		$user_id = (int) $summary['user_id'];
+		if ( ! $user_id || ! get_userdata( $user_id ) ) {
+			list( $user_id ) = Members::ensure_user( (string) $summary['email'], (string) $summary['first_name'], (string) $summary['last_name'] );
+		}
+		foreach ( $user_id ? array_keys( $levels ) : array() as $level_id ) {
+			Members::grant( $user_id, $level_id, 'aluleth-commerce', 'order:' . (int) $order['id'] );
+		}
+	}
+
+	/**
+	 * Aluleth Commerce: money given back. A full refund ends what the order gave.
+	 *
+	 * @param array $order Order (after the refund).
+	 * @return void
+	 */
+	public static function alc_refunded( $order ) {
+		if ( is_array( $order ) && ! empty( $order['id'] ) && (int) $order['refunded_total'] >= (int) $order['total'] ) {
+			Members::end_by_ref( 'aluleth-commerce', 'order:' . (int) $order['id'], 'refunded' );
+		}
+	}
+
+	/**
+	 * Aluleth Commerce: an order was cancelled.
+	 *
+	 * @param array $order Order.
+	 * @return void
+	 */
+	public static function alc_cancelled( $order ) {
+		if ( is_array( $order ) && ! empty( $order['id'] ) ) {
+			Members::end_by_ref( 'aluleth-commerce', 'order:' . (int) $order['id'], 'cancelled' );
+		}
+	}
+
+	/**
 	 * An Aluleth Forms entry (after payment for a payment form).
 	 *
 	 * @param int   $entry_id   Entry id.
@@ -452,6 +513,8 @@ final class Sources {
 					$out['renews'] = true;
 				}
 			}
+		} elseif ( 'aluleth-commerce' === $row->source && class_exists( '\ALC_Storefront' ) ) {
+			$out['url'] = (string) \ALC_Storefront::url( 'account' );
 		} elseif ( 'woocommerce' === $row->source && function_exists( 'wc_get_account_endpoint_url' ) ) {
 			$out['url'] = (string) wc_get_account_endpoint_url( 'orders' );
 			if ( 0 === strpos( $row->source_ref, 'wcs:' ) && function_exists( 'wcs_get_subscription' ) ) {

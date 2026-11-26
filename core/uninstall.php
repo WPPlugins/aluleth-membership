@@ -83,6 +83,8 @@ if ( ! function_exists( 'aluleth_core_other_plugins' ) ) {
 				$wpdb->query( $wpdb->prepare( 'DROP TABLE IF EXISTS %i', $wpdb->prefix . $prefix . $name ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange
 			}
 		}
+		// Read before the import options are deleted below.
+		$import_folder = sanitize_key( (string) get_option( 'aluleth_core_import_folder', '' ) );
 		// Connections (API keys), import jobs and cached lists from the outside tools.
 		$like = array( 'aluleth\_connection\_%', 'aluleth\_core\_import\_%', '\_transient\_aluleth\_%', '\_transient\_timeout\_aluleth\_%' );
 		foreach ( $like as $pattern ) {
@@ -97,16 +99,27 @@ if ( ! function_exists( 'aluleth_core_other_plugins' ) ) {
 		delete_option( 'aluleth_setup' );
 		delete_metadata( 'user', 0, 'aluleth_setup_hidden', '', true );
 
-		// Files waiting to be imported.
+		// Files waiting to be imported (the folder of earlier versions too).
 		$upload = wp_upload_dir( null, false );
-		$dir    = trailingslashit( $upload['basedir'] ) . 'aluleth-imports';
-		if ( is_dir( $dir ) ) {
+		$folder = $import_folder;
+		$dirs   = array( trailingslashit( $upload['basedir'] ) . 'aluleth-imports' );
+		if ( '' !== $folder ) {
+			$dirs[] = trailingslashit( $upload['basedir'] ) . $folder . '/imports';
+			$dirs[] = trailingslashit( $upload['basedir'] ) . $folder;
+		}
+		foreach ( $dirs as $dir ) {
+			if ( ! is_dir( $dir ) ) {
+				continue;
+			}
 			foreach ( (array) scandir( $dir ) as $name ) {
 				if ( is_file( $dir . '/' . $name ) ) {
 					wp_delete_file( $dir . '/' . $name );
 				}
 			}
-			rmdir( $dir ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_rmdir -- our own empty folder.
+			if ( 2 === count( (array) scandir( $dir ) ) ) {
+				rmdir( $dir ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_rmdir -- our own empty folder.
+			}
 		}
+		delete_option( 'aluleth_core_import_folder' );
 	}
 }
